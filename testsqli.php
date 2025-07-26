@@ -1,0 +1,885 @@
+<?php
+// Cấu hình kết nối cơ sở dữ liệu
+$servername = "localhost";
+$username_db = "root"; // Thay đổi nếu tên người dùng MySQL của bạn khác
+$password_db = "";     // Thay đổi nếu mật khẩu MySQL của bạn khác
+$dbname = "sqli_login_demo";
+
+$login_message = ""; // Biến để lưu trữ thông báo đăng nhập
+
+// Xử lý logic đăng nhập khi form được gửi
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Tạo kết nối
+    $conn = new mysqli($servername, $username_db, $password_db, $dbname);
+
+    // Kiểm tra kết nối
+    if ($conn->connect_error) {
+        $login_message = "<span class='error'>Lỗi kết nối cơ sở dữ liệu: " . $conn->connect_error . "</span>";
+    } else {
+        // Lấy dữ liệu từ form
+        // LƯU Ý QUAN TRỌNG: Dữ liệu đầu vào KHÔNG được làm sạch hoặc chuẩn bị.
+        // Đây là điểm yếu gây ra SQL Injection.
+        $username = $_POST['username'];
+        $password = $_POST['password'];
+
+        // Xây dựng truy vấn SQL bằng cách nối chuỗi trực tiếp
+        // Ví dụ tấn công:
+        // Username: admin'--
+        // Password: bất kỳ
+        // -> Truy vấn sẽ thành: SELECT id, username FROM users WHERE username = 'admin' AND password = ''--'
+        // -> Phần ' AND password = '' bị bỏ qua, đăng nhập thành công admin
+
+        // Ví dụ khác:
+        // Username: ' OR 1=1 --
+        // Password: bất kỳ
+        // -> Truy vấn sẽ thành: SELECT id, username FROM users WHERE username = '' OR 1=1 --' AND password = ''
+        // -> Đăng nhập thành công người dùng đầu tiên trong bảng
+
+        $sql = "SELECT id, username FROM users WHERE username = '$username' AND password = '$password'";
+
+        // Để debug, bạn có thể in ra truy vấn được thực thi (KHÔNG NÊN LÀM TRONG MÔI TRƯỜNG THỰC TẾ)
+        // $login_message .= "<p style='color: #cbd5e1; font-size: 0.8rem; text-align: left;'>Truy vấn SQL: <pre>" . htmlspecialchars($sql) . "</pre></p>";
+
+        $result = $conn->query($sql);
+
+        if ($result) {
+            if ($result->num_rows > 0) {
+                // Đăng nhập thành công
+                $row = $result->fetch_assoc();
+                $login_message = "<span class='success'>Đăng nhập thành công! Chào mừng, " . htmlspecialchars($row['username']) . "!</span>";
+            } else {
+                // Sai tên người dùng hoặc mật khẩu
+                $login_message = "<span class='error'>Tên người dùng hoặc mật khẩu không đúng.</span>";
+            }
+        } else {
+            // Lỗi truy vấn SQL (có thể do SQL Injection)
+            $login_message = "<span class='error'>Lỗi truy vấn SQL: " . $conn->error . "</span>";
+        }
+
+        $conn->close();
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Labs - Cổng Đăng nhập</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            overflow: hidden; /* Giữ nguyên overflow hidden để Three.js hoạt động và không có thanh cuộn tổng thể */
+            height: 100vh;
+            color: #e2e8f0;
+            display: flex; /* Dùng flexbox cho body để căn giữa login-container */
+            justify-content: center;
+            align-items: center;
+            position: relative; /* Cần thiết cho z-index của canvas và form */
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1; /* Nền 3D */
+        }
+
+        .login-container {
+            position: relative; /* Giữ relative để z-index có tác dụng */
+            z-index: 10; /* Đặt form lên trên nền 3D */
+            display: flex; /* Sử dụng Flexbox để căn giữa form */
+            justify-content: center; /* Căn giữa ngang */
+            align-items: center; /* Căn giữa dọc */
+            min-height: 100vh; /* Đảm bảo form chiếm toàn bộ chiều cao để căn giữa */
+            padding: 20px;
+            width: 100%; /* Đảm bảo nó chiếm đủ chiều rộng */
+            height: 100%; /* Đảm bảo nó chiếm đủ chiều cao */
+        }
+
+        .glass-form {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                inset 0 0 30px rgba(148, 163, 184, 0.05);
+            
+            padding: 30px 48px; 
+            width: 100%;
+            max-width: 800px; /* Vẫn giữ max-width lớn */
+            max-height: 60vh; /* Giới hạn chiều cao */
+            min-height: 400px; /* Đặt min-height để form không quá nhỏ */
+            
+            overflow: hidden; /* Đảm bảo không có thanh cuộn nào xuất hiện */
+
+            text-align: center;
+            transform-style: preserve-3d;
+            animation: float 10s ease-in-out infinite;
+            position: relative;
+            
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; /* Giúp các phần tử giãn đều */
+        }
+
+        .glass-form::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #3b82f6, #60a5fa, #3b82f6);
+            border-radius: 26px;
+            z-index: -1;
+            animation: glow-pulse 6s ease-in-out infinite alternate;
+            filter: blur(15px);
+            opacity: 0.2;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotateX(0deg) rotateY(0deg); }
+            33% { transform: translateY(-15px) rotateX(2deg) rotateY(2deg); }
+            66% { transform: translateY(10px) rotateX(-1deg) rotateY(-1deg); }
+        }
+
+        @keyframes glow-pulse {
+            0% { opacity: 0.15; }
+            100% { opacity: 0.3; }
+        }
+
+        .form-header {
+            margin-bottom: 25px; /* Giảm margin bottom */
+            flex-shrink: 0; /* Không cho header bị co lại */
+        }
+
+        .form-header h1 {
+            color: #fff;
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 10px; /* Giảm margin bottom */
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #e0f2fe, #bae6fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-header p {
+            color: #94a3b8;
+            font-size: 1rem;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+
+        .auth-form-content {
+            flex-grow: 1; /* Cho phép nội dung form co giãn */
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Căn giữa nội dung form dọc theo chiều cao còn lại */
+            margin-bottom: 10px; /* Giảm khoảng cách cuối form */
+        }
+
+        .input-group {
+            margin-bottom: 18px; /* Giảm margin bottom hơn nữa */
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 7px; /* Giảm margin bottom */
+            color: #cbd5e1;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px; /* Giảm padding */
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            background: rgba(30, 41, 59, 0.5);
+            color: #f1f5f9;
+            font-size: 0.9rem; /* Giảm font-size */
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.1),
+                0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.6);
+            box-shadow: 
+                0 0 0 3px rgba(59, 130, 246, 0.2),
+                inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            background: rgba(30, 41, 59, 0.7);
+            transform: translateY(-1px);
+        }
+
+        .input-group input::placeholder {
+            color: #64748b;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px; /* Giảm margin bottom */
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px; /* Giảm padding */
+            border: none;
+            border-radius: 16px;
+            font-size: 0.9rem; /* Giảm font-size */
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-login {
+            background: linear-gradient(45deg, #3b82f6, #60a5fa);
+            color: white;
+        }
+
+        .btn-signup {
+            background: rgba(30, 41, 59, 0.5);
+            color: #cbd5e1;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-login:hover {
+            box-shadow: 
+                0 10px 15px -3px rgba(59, 130, 246, 0.3),
+                0 4px 6px -2px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn-signup:hover {
+            background: rgba(30, 41, 59, 0.7);
+            border-color: rgba(148, 163, 184, 0.4);
+        }
+
+        .forgot-password {
+            color: #93c5fd;
+            text-decoration: none;
+            font-size: 0.85rem; /* Giảm font-size */
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-bottom: 20px; /* Thêm margin để tách biệt */
+            display: block; /* Để margin hoạt động */
+        }
+
+        .forgot-password:hover {
+            color: #3b82f6;
+            text-decoration: underline;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0; /* Giảm margin */
+            color: #64748b;
+            flex-shrink: 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .divider span {
+            padding: 0 12px; /* Giảm padding */
+            font-size: 0.8rem; /* Giảm font-size */
+        }
+
+        .social-login {
+            display: flex;
+            gap: 10px; /* Giảm gap */
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .social-btn {
+            width: 40px; /* Giảm kích thước */
+            height: 40px; /* Giảm kích thước */
+            border-radius: 50%;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(30, 41, 59, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .social-btn svg {
+            width: 18px; 
+            height: 18px; 
+            vertical-align: middle; 
+        }
+
+        .social-btn:hover {
+            transform: translateY(-2px);
+            background: rgba(56, 189, 248, 0.1);
+            border-color: rgba(56, 189, 248, 0.3);
+        }
+
+        .loading {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .fallback-ui {
+            display: none; /* Mặc định ẩn */
+            flex-direction: column; /* Dùng flexbox để căn giữa nội dung */
+            justify-content: center;
+            align-items: center;
+            background: #1e293b;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 400px;
+            margin: 20px;
+            position: relative;
+            z-index: 10;
+            color: #e2e8f0;
+        }
+
+        .fallback-ui h2 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .fallback-ui p {
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .fallback-ui .fallback-btn {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #3b82f6, #60a5fa);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .fallback-ui .fallback-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1024px) {
+            .glass-form {
+                max-width: 700px; /* Hơi thu nhỏ trên màn hình tablet ngang */
+                padding: 25px 35px;
+            }
+            .form-header h1 {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .glass-form {
+                padding: 20px 25px; /* Giảm padding trên mobile */
+                max-width: 90%; /* Chiếm phần lớn chiều rộng màn hình */
+                max-height: 90vh; /* Cho phép nó cao hơn nếu cần trên màn hình dọc */
+                min-height: unset; /* Bỏ min-height trên mobile để form tự co giãn linh hoạt */
+                overflow: hidden; 
+            }
+            
+            .form-header h1 {
+                font-size: 1.6rem;
+                margin-bottom: 8px;
+            }
+            .form-header p {
+                font-size: 0.9rem;
+            }
+            .input-group label {
+                font-size: 0.85rem;
+                margin-bottom: 5px;
+            }
+            .input-group input {
+                padding: 10px 14px;
+                font-size: 0.85rem;
+            }
+            .form-actions {
+                flex-direction: column; /* Các nút xuống dòng trên mobile */
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+            .btn {
+                width: 100%; /* Các nút chiếm toàn bộ chiều rộng */
+                padding: 10px;
+                font-size: 0.85rem;
+            }
+            .forgot-password {
+                font-size: 0.8rem;
+                margin-bottom: 15px;
+            }
+            .divider {
+                margin: 15px 0;
+            }
+            .social-btn {
+                width: 35px;
+                height: 35px;
+            }
+            .social-btn svg {
+                width: 16px; /* Giữ kích thước icon hợp lý trên mobile */
+                height: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .glass-form {
+                padding: 15px 20px;
+            }
+            .form-header h1 {
+                font-size: 1.4rem;
+            }
+            .form-header p {
+                font-size: 0.85rem;
+            }
+            .input-group {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div class="login-container">
+        <div class="glass-form" id="loginForm">
+            <div class="form-header">
+                <h1>Nexus Labs</h1>
+                <p>Access your future workspace with cutting-edge technology</p>
+            </div>
+            
+            <form id="authForm" class="auth-form-content" method="POST" action="">
+                <div class="input-group">
+                    <label for="username">Tên người dùng</label>
+                    <input type="text" id="username" name="username" placeholder="Nhập tên người dùng" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="password">Mật khẩu</label>
+                    <input type="password" id="password" name="password" placeholder="Nhập mật khẩu" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-login" id="loginBtn">
+                        <span class="btn-text">Đăng nhập</span>
+                        <div class="loading" id="loginLoading"></div>
+                    </button>
+                    <button type="button" class="btn btn-signup" id="signupBtn">
+                        <span class="btn-text">Đăng ký</span>
+                        <div class="loading" id="signupLoading"></div>
+                    </button>
+                </div>
+                
+                <a href="#" class="forgot-password">Quên mật khẩu?</a>
+            </form>
+            
+            <?php if (!empty($login_message)): ?>
+                <div style="margin-top: 20px; padding: 10px; border-radius: 8px; background-color: rgba(0,0,0,0.3); font-size: 0.9rem;">
+                    <?php echo $login_message; ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="divider">
+                <span>hoặc tiếp tục với</span>
+            </div>
+            
+            <div class="social-login">
+                <div class="social-btn" title="Google">
+                    <!-- Google SVG Icon -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                    </svg>
+                </div>
+                <div class="social-btn" title="Facebook">
+                    <!-- Facebook SVG Icon -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 0C5.373 0 0 5.373 0 12c0 6.016 4.388 11.011 10.125 11.854V15.422H7.078V12h3.047V9.356c0-3.007 1.792-4.669 4.533-4.669 1.303 0 2.686.236 2.686.236v2.953H15.83c-1.491 0-1.956.925-1.956 1.874V12h3.328l-.532 3.422h-2.796v6.432C19.612 23.011 24 18.016 24 12c0-6.627-5.373-12-12-12z" fill="#1877F2"/>
+                    </svg>
+                </div>
+                <div class="social-btn" title="GitHub">
+                    <!-- GitHub SVG Icon -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" fill="#fff"/>
+                    </svg>
+                </div>
+                <div class="social-btn" title="Microsoft">
+                    <!-- Microsoft SVG Icon -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" fill="#00A4EF"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <div class="fallback-ui" id="fallbackUI">
+            <h2>WebGL Not Supported</h2>
+            <p>Your browser doesn't support WebGL. Please use a modern browser like Chrome, Firefox, or Edge for the best experience.</p>
+            <button class="fallback-btn" onclick="location.reload()">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Form submission handling (đã loại bỏ fetch vì PHP xử lý POST trực tiếp)
+        document.getElementById('authForm').addEventListener('submit', function(e) {
+            const loginBtn = document.getElementById('loginBtn');
+            const loginText = loginBtn.querySelector('.btn-text');
+            const loginLoading = document.getElementById('loginLoading');
+            
+            loginText.style.display = 'none';
+            loginLoading.style.display = 'block';
+            loginBtn.disabled = true;
+            // Không có setTimeout vì form sẽ submit và tải lại trang
+            // Bạn có thể thêm animation loading nếu muốn, nhưng nó sẽ reset khi tải lại trang
+        });
+
+        document.getElementById('signupBtn').addEventListener('click', function() {
+            // Đây chỉ là nút ví dụ, không có chức năng đăng ký thực tế
+            alert('Chức năng đăng ký chưa được triển khai trong bản demo này.');
+        });
+
+        // Three.js implementation
+        let scene, camera, renderer;
+        let companyLogo, geometricShapes = [];
+        let canvasContainer = document.getElementById('canvas-container');
+        let loginForm = document.getElementById('loginForm');
+        let fallbackUI = document.getElementById('fallbackUI');
+
+        function initThreeJS() {
+            try {
+                // Kiểm tra hỗ trợ WebGL
+                if (!window.WebGLRenderingContext) {
+                    throw new Error("WebGL is not supported.");
+                }
+
+                // Scene setup
+                scene = new THREE.Scene();
+                scene.fog = new THREE.FogExp2(0x0f172a, 0.002);
+
+                // Camera setup
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+                camera.position.set(0, 0, 50);
+
+                // Renderer setup
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                
+                // Đảm bảo chỉ thêm canvas một lần
+                if (canvasContainer.children.length === 0) {
+                    canvasContainer.appendChild(renderer.domElement);
+                } else {
+                    console.warn("Canvas already exists in container. Skipping append.");
+                }
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x4a5568, 0.4);
+                scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0x60a5fa, 1);
+                directionalLight.position.set(10, 20, 15);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                scene.add(directionalLight);
+
+                const hemisphereLight = new THREE.HemisphereLight(0x60a5fa, 0x1e293b, 0.3);
+                scene.add(hemisphereLight);
+
+                // Create company logo (simplified geometric design)
+                const logoGroup = new THREE.Group();
+                
+                // Main logo shape (hexagon)
+                const hexagonGeometry = new THREE.CylinderGeometry(8, 8, 1, 6);
+                const hexagonMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x3b82f6,
+                    emissive: 0x1e40af,
+                    shininess: 80,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const hexagon = new THREE.Mesh(hexagonGeometry, hexagonMaterial);
+                hexagon.rotation.x = Math.PI / 2;
+                logoGroup.add(hexagon);
+
+                // Inner circle
+                const circleGeometry = new THREE.SphereGeometry(4, 32, 32);
+                const circleMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x60a5fa,
+                    emissive: 0x1d4ed8,
+                    shininess: 60,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const circle = new THREE.Mesh(circleGeometry, circleMaterial);
+                logoGroup.add(circle);
+
+                // Outer ring
+                const ringGeometry = new THREE.TorusGeometry(6, 0.5, 16, 64);
+                const ringMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x93c5fd,
+                    emissive: 0x1e40af,
+                    shininess: 40,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                ring.rotation.x = Math.PI / 2;
+                logoGroup.add(ring);
+
+                // Vị trí của logo trong scene (căn giữa 0,0) - sẽ được điều khiển bởi camera di chuyển
+                logoGroup.position.set(0, 0, -30); /* Đẩy lùi logo về phía sau để tạo chiều sâu */
+                scene.add(logoGroup);
+                companyLogo = logoGroup;
+
+                // Create geometric shapes for the environment
+                const shapes = [
+                    { type: 'box', size: [4, 4, 4], color: 0x3b82f6, position: [20, 5, -50] },
+                    { type: 'sphere', size: [3], color: 0x60a5fa, position: [-15, 8, -55] },
+                    { type: 'cylinder', size: [2, 2, 6], color: 0x93c5fd, position: [10, -5, -65] },
+                    { type: 'torus', size: [5, 1], color: 0xbae6fd, position: [-20, -3, -70] },
+                    { type: 'box', size: [3, 6, 3], color: 0x3b82f6, position: [25, -8, -60] },
+                    { type: 'sphere', size: [2.5], color: 0x60a5fa, position: [-10, 12, -75] }
+                ];
+
+                geometricShapes = []; // Reset geometricShapes array
+                shapes.forEach(shapeData => {
+                    let geometry, material, mesh;
+                    
+                    switch(shapeData.type) {
+                        case 'box':
+                            geometry = new THREE.BoxGeometry(...shapeData.size);
+                            break;
+                        case 'sphere':
+                            geometry = new THREE.SphereGeometry(shapeData.size[0], 32, 32);
+                            break;
+                        case 'cylinder':
+                            geometry = new THREE.CylinderGeometry(shapeData.size[0], shapeData.size[1], shapeData.size[2], 32);
+                            break;
+                        case 'torus':
+                            geometry = new THREE.TorusGeometry(shapeData.size[0], shapeData.size[1], 16, 64);
+                            break;
+                        default:
+                            geometry = new THREE.BoxGeometry(1, 1, 1); // Fallback
+                    }
+                    
+                    material = new THREE.MeshPhongMaterial({
+                        color: shapeData.color,
+                        emissive: new THREE.Color(shapeData.color).multiplyScalar(0.2),
+                        shininess: 30,
+                        transparent: true,
+                        opacity: 0.4
+                    });
+                    
+                    mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(...shapeData.position);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    scene.add(mesh);
+                    geometricShapes.push({
+                        mesh: mesh,
+                        originalY: shapeData.position[1],
+                        speed: 0.5 + Math.random() * 0.5
+                    });
+                });
+
+                // Create particle system
+                const particleCount = 1000;
+                const particleGeometry = new THREE.BufferGeometry();
+                const particlePositions = new Float32Array(particleCount * 3);
+                const particleSizes = new Float32Array(particleCount);
+
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    particlePositions[i3] = (Math.random() - 0.5) * 200;
+                    particlePositions[i3 + 1] = (Math.random() - 0.5) * 200;
+                    particlePositions[i3 + 2] = (Math.random() - 0.5) * 200 - 50;
+                    particleSizes[i] = Math.random() * 2 + 0.5;
+                }
+
+                particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+                particleGeometry.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+
+                const particleMaterial = new THREE.PointsMaterial({
+                    color: 0xbae6fd,
+                    size: 1.5,
+                    transparent: true,
+                    opacity: 0.6,
+                    sizeAttenuation: true
+                });
+
+                const particles = new THREE.Points(particleGeometry, particleMaterial);
+                scene.add(particles);
+
+                // Mouse movement variables
+                let mouseX = 0;
+                let mouseY = 0;
+                const windowHalfX = window.innerWidth / 2;
+                const windowHalfY = window.innerHeight / 2;
+
+                // Mouse move event
+                document.addEventListener('mousemove', (event) => {
+                    mouseX = (event.clientX - windowHalfX) / 100;
+                    mouseY = (event.clientY - windowHalfY) / 100;
+                });
+
+                // Touch move event for mobile
+                document.addEventListener('touchmove', (event) => {
+                    if (event.touches.length > 0) {
+                        mouseX = (event.touches[0].clientX - windowHalfX) / 100;
+                        mouseY = (event.touches[0].clientY - windowHalfY) / 100;
+                    }
+                });
+
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                // Animation loop
+                const clock = new THREE.Clock();
+                let autoRotation = 0;
+
+                function animate() {
+                    requestAnimationFrame(animate);
+                    
+                    const delta = clock.getDelta();
+                    const time = clock.getElapsedTime();
+
+                    // Auto rotation
+                    autoRotation += 0.0005;
+                    
+                    // Mouse parallax
+                    const targetX = mouseX * 0.01;
+                    const targetY = mouseY * 0.01;
+                    
+                    // Điều chỉnh camera để tạo hiệu ứng parallax mượt mà hơn trên nền 3D
+                    camera.position.x += (Math.sin(autoRotation) * 2 + targetX - camera.position.x) * 0.05;
+                    camera.position.y += (Math.cos(autoRotation * 0.7) * 1 + -targetY - camera.position.y) * 0.05;
+                    camera.position.z = 50 + Math.sin(time * 0.3) * 2; /* Để camera hơi dao động về phía trước/sau */
+                    camera.lookAt(0, 0, 0);
+
+                    // Animate logo (sẽ nằm phía sau form nhưng vẫn hiển thị)
+                    if (companyLogo) {
+                        companyLogo.rotation.y += 0.005;
+                        companyLogo.rotation.x = Math.sin(time * 0.5) * 0.1;
+                        companyLogo.position.y = 0 + Math.sin(time * 0.8) * 0.5;
+                        
+                        // Pulsing effect
+                        const scale = 1 + Math.sin(time * 2) * 0.02;
+                        companyLogo.scale.set(scale, scale, scale);
+                    }
+
+                    // Animate geometric shapes
+                    geometricShapes.forEach((shape, index) => {
+                        shape.mesh.rotation.x += 0.003 + index * 0.0005;
+                        shape.mesh.rotation.y += 0.004 + index * 0.0005;
+                        shape.mesh.position.y = shape.originalY + Math.sin(time * shape.speed + index) * 1.5;
+                        shape.mesh.material.emissiveIntensity = 0.1 + Math.sin(time * 1.5 + index) * 0.1;
+                    });
+
+                    // Animate particles
+                    const positions = particles.geometry.attributes.position.array;
+                    for (let i = 0; i < particleCount; i++) {
+                        const i3 = i * 3;
+                        positions[i3 + 2] += 0.1;
+                        if (positions[i3 + 2] > 50) {
+                            positions[i3 + 2] = -100;
+                        }
+                    }
+                    particles.geometry.attributes.position.needsUpdate = true;
+
+                    renderer.render(scene, camera);
+                }
+
+                animate();
+                // Hiển thị form và ẩn fallback nếu WebGL thành công
+                loginForm.style.display = 'flex'; // Đảm bảo form hiển thị
+                fallbackUI.style.display = 'none'; // Ẩn fallback
+
+            } catch (error) {
+                console.error('WebGL initialization failed:', error);
+                canvasContainer.style.display = 'none'; // Ẩn canvas
+                loginForm.style.display = 'none'; /* Ẩn form chính */
+                fallbackUI.style.display = 'flex'; /* Hiển thị fallback và căn giữa */
+            }
+        }
+
+        // Initialize everything when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            initThreeJS();
+        });
+
+        // Smooth scrolling for mobile (ngăn chặn zoom bằng cách vuốt)
+        document.addEventListener('touchmove', function(event) {
+            if (event.scale !== 1) { event.preventDefault(); }
+        }, { passive: false });
+
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    </script>
+</body>
+</html>

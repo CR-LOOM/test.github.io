@@ -1,71 +1,9 @@
-<?php
-// Cấu hình kết nối cơ sở dữ liệu
-$servername = "localhost";
-$username_db = "root"; // Thay đổi nếu tên người dùng MySQL của bạn khác
-$password_db = "";     // Thay đổi nếu mật khẩu MySQL của bạn khác
-$dbname = "sqli_login_demo";
-
-$login_message = ""; // Biến để lưu trữ thông báo đăng nhập
-
-// Xử lý logic đăng nhập khi form được gửi
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Tạo kết nối
-    $conn = new mysqli($servername, $username_db, $password_db, $dbname);
-
-    // Kiểm tra kết nối
-    if ($conn->connect_error) {
-        $login_message = "<span class='error'>Lỗi kết nối cơ sở dữ liệu: " . $conn->connect_error . "</span>";
-    } else {
-        // Lấy dữ liệu từ form
-        // LƯU Ý QUAN TRỌNG: Dữ liệu đầu vào KHÔNG được làm sạch hoặc chuẩn bị.
-        // Đây là điểm yếu gây ra SQL Injection.
-        $username = $_POST['username'];
-        $password = $_POST['password'];
-
-        // Xây dựng truy vấn SQL bằng cách nối chuỗi trực tiếp
-        // Ví dụ tấn công:
-        // Username: admin'--
-        // Password: bất kỳ
-        // -> Truy vấn sẽ thành: SELECT id, username FROM users WHERE username = 'admin' AND password = ''--'
-        // -> Phần ' AND password = '' bị bỏ qua, đăng nhập thành công admin
-
-        // Ví dụ khác:
-        // Username: ' OR 1=1 --
-        // Password: bất kỳ
-        // -> Truy vấn sẽ thành: SELECT id, username FROM users WHERE username = '' OR 1=1 --' AND password = ''
-        // -> Đăng nhập thành công người dùng đầu tiên trong bảng
-
-        $sql = "SELECT id, username FROM users WHERE username = '$username' AND password = '$password'";
-
-        // Để debug, bạn có thể in ra truy vấn được thực thi (KHÔNG NÊN LÀM TRONG MÔI TRƯỜNG THỰC TẾ)
-        // $login_message .= "<p style='color: #cbd5e1; font-size: 0.8rem; text-align: left;'>Truy vấn SQL: <pre>" . htmlspecialchars($sql) . "</pre></p>";
-
-        $result = $conn->query($sql);
-
-        if ($result) {
-            if ($result->num_rows > 0) {
-                // Đăng nhập thành công
-                $row = $result->fetch_assoc();
-                $login_message = "<span class='success'>Đăng nhập thành công! Chào mừng, " . htmlspecialchars($row['username']) . "!</span>";
-            } else {
-                // Sai tên người dùng hoặc mật khẩu
-                $login_message = "<span class='error'>Tên người dùng hoặc mật khẩu không đúng.</span>";
-            }
-        } else {
-            // Lỗi truy vấn SQL (có thể do SQL Injection)
-            $login_message = "<span class='error'>Lỗi truy vấn SQL: " . $conn->error . "</span>";
-        }
-
-        $conn->close();
-    }
-}
-?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Labs - Cổng Đăng nhập</title>
+    <title>Nexus Labs - Cổng Đăng nhập (Mô phỏng SQLi)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * {
@@ -254,15 +192,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
-        .btn-login {
-            background: linear-gradient(45deg, #3b82f6, #60a5fa);
+        .btn-login-vulnerable {
+            background: #ef4444; /* Màu đỏ cho dễ bị tấn công */
             color: white;
         }
-
-        .btn-signup {
-            background: rgba(30, 41, 59, 0.5);
-            color: #cbd5e1;
-            border: 1px solid rgba(148, 163, 184, 0.2);
+        .btn-login-secure {
+            background: #22c55e; /* Màu xanh lá cho an toàn */
+            color: white;
         }
 
         .btn:hover {
@@ -274,10 +210,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             transform: translateY(0);
         }
 
-        .btn-login:hover {
+        .btn-login-vulnerable:hover {
+            background-color: #dc2626;
             box-shadow: 
-                0 10px 15px -3px rgba(59, 130, 246, 0.3),
-                0 4px 6px -2px rgba(59, 130, 246, 0.1);
+                0 10px 15px -3px rgba(239, 68, 68, 0.3),
+                0 4px 6px -2px rgba(239, 68, 68, 0.1);
+        }
+        .btn-login-secure:hover {
+            background-color: #16a34a;
+            box-shadow: 
+                0 10px 15px -3px rgba(34, 197, 94, 0.3),
+                0 4px 6px -2px rgba(34, 197, 94, 0.1);
+        }
+
+
+        .btn-signup {
+            background: rgba(30, 41, 59, 0.5);
+            color: #cbd5e1;
+            border: 1px solid rgba(148, 163, 184, 0.2);
         }
 
         .btn-signup:hover {
@@ -498,7 +448,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <p>Access your future workspace with cutting-edge technology</p>
             </div>
             
-            <form id="authForm" class="auth-form-content" method="POST" action="">
+            <form id="authForm" class="auth-form-content">
                 <div class="input-group">
                     <label for="username">Tên người dùng</label>
                     <input type="text" id="username" name="username" placeholder="Nhập tên người dùng" required>
@@ -510,24 +460,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </div>
                 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-login" id="loginBtn">
-                        <span class="btn-text">Đăng nhập</span>
-                        <div class="loading" id="loginLoading"></div>
+                    <button type="submit" class="btn btn-login-vulnerable" id="loginVulnerableBtn">
+                        <span class="btn-text">Đăng nhập (Dễ bị tấn công)</span>
+                        <div class="loading" id="loginVulnerableLoading"></div>
                     </button>
-                    <button type="button" class="btn btn-signup" id="signupBtn">
-                        <span class="btn-text">Đăng ký</span>
-                        <div class="loading" id="signupLoading"></div>
+                    <button type="submit" class="btn btn-login-secure" id="loginSecureBtn">
+                        <span class="btn-text">Đăng nhập (An toàn)</span>
+                        <div class="loading" id="loginSecureLoading"></div>
                     </button>
                 </div>
                 
                 <a href="#" class="forgot-password">Quên mật khẩu?</a>
             </form>
             
-            <?php if (!empty($login_message)): ?>
-                <div style="margin-top: 20px; padding: 10px; border-radius: 8px; background-color: rgba(0,0,0,0.3); font-size: 0.9rem;">
-                    <?php echo $login_message; ?>
-                </div>
-            <?php endif; ?>
+            <div id="loginMessage" style="margin-top: 20px; padding: 10px; border-radius: 8px; background-color: rgba(0,0,0,0.3); font-size: 0.9rem;">
+                <!-- Thông báo đăng nhập sẽ hiển thị ở đây -->
+            </div>
 
             <div class="divider">
                 <span>hoặc tiếp tục với</span>
@@ -567,30 +515,133 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="fallback-ui" id="fallbackUI">
             <h2>WebGL Not Supported</h2>
             <p>Your browser doesn't support WebGL. Please use a modern browser like Chrome, Firefox, or Edge for the best experience.</p>
-            <button class="fallback-btn" onclick="location.reload()">Try Again</button>
+            <button class="fallback-btn" onclick="location.reload()">Thử lại</button>
         </div>
     </div>
 
     <script>
-        // Form submission handling (đã loại bỏ fetch vì PHP xử lý POST trực tiếp)
-        document.getElementById('authForm').addEventListener('submit', function(e) {
-            const loginBtn = document.getElementById('loginBtn');
+        // --- MÔ PHỎNG CƠ SỞ DỮ LIỆU (CLIENT-SIDE) ---
+        const simulatedUsers = [
+            { username: 'admin', password: 'admin_pass' },
+            { username: 'testuser', password: 'test_pass' },
+            { username: 'john_doe', password: 'password123' },
+            { username: 'jane_smith', password: 'securepass' }
+        ];
+
+        // --- HÀM MÔ PHỎNG ĐĂNG NHẬP DỄ BỊ TẤN CÔNG (VULNERABLE) ---
+        function loginVulnerable(username, password) {
+            // Mô phỏng truy vấn SQL dễ bị tấn công bằng cách nối chuỗi
+            // KHÔNG LÀM THẾ NÀY TRONG MÔI TRƯỜNG THỰC TẾ!
+            const simulatedSql = `SELECT id, username FROM users WHERE username = '${username}' AND password = '${password}'`;
+            
+            let message = `<p>Truy vấn SQL mô phỏng: <pre>${escapeHtml(simulatedSql)}</pre></p>`;
+
+            // Logic mô phỏng SQL Injection bypass
+            // Ví dụ: ' OR 1=1 --
+            // Hoặc: admin'--
+            if (username.includes("' OR 1=1 --") || username.includes("' OR '1'='1") || username.includes("admin'--")) {
+                message += "<span class='success'>Đăng nhập thành công! (Bị tấn công SQL Injection)</span>";
+                return message;
+            }
+
+            // Logic mô phỏng đăng nhập bình thường
+            const foundUser = simulatedUsers.find(user => 
+                user.username === username && user.password === password
+            );
+
+            if (foundUser) {
+                message += `<span class='success'>Đăng nhập thành công! Chào mừng, ${escapeHtml(foundUser.username)}!</span>`;
+            } else {
+                message += "<span class='error'>Tên người dùng hoặc mật khẩu không đúng.</span>";
+            }
+            return message;
+        }
+
+        // --- HÀM MÔ PHỎNG ĐĂNG NHẬP AN TOÀN (SECURE) ---
+        function loginSecure(username, password) {
+            // Mô phỏng Prepared Statement
+            // Dữ liệu đầu vào được coi là giá trị, không phải mã SQL
+            const simulatedSqlTemplate = `SELECT id, username FROM users WHERE username = ? AND password = ?`;
+            
+            let message = `<p>Truy vấn SQL được chuẩn bị: <pre>${escapeHtml(simulatedSqlTemplate)}</pre></p>`;
+            message += `<p>Tham số liên kết: Username='${escapeHtml(username)}', Password='${escapeHtml(password)}'</p>`;
+
+            const foundUser = simulatedUsers.find(user => 
+                user.username === username && user.password === password
+            );
+
+            if (foundUser) {
+                message += `<span class='success'>Đăng nhập thành công! Chào mừng, ${escapeHtml(foundUser.username)}!</span>`;
+            } else {
+                message += "<span class='error'>Tên người dùng hoặc mật khẩu không đúng.</span>";
+            }
+            return message;
+        }
+
+        // Hàm để escape HTML entities, ngăn chặn XSS trong thông báo hiển thị
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // --- XỬ LÝ SỰ KIỆN FORM ---
+        document.getElementById('loginVulnerableBtn').addEventListener('click', function(e) {
+            e.preventDefault(); // Ngăn chặn form submit thật
+            const usernameInput = document.getElementById('username').value;
+            const passwordInput = document.getElementById('password').value;
+            const loginMessageDiv = document.getElementById('loginMessage');
+
+            // Hiển thị loading
+            const loginBtn = this;
             const loginText = loginBtn.querySelector('.btn-text');
-            const loginLoading = document.getElementById('loginLoading');
+            const loginLoading = loginBtn.querySelector('.loading');
             
             loginText.style.display = 'none';
             loginLoading.style.display = 'block';
             loginBtn.disabled = true;
-            // Không có setTimeout vì form sẽ submit và tải lại trang
-            // Bạn có thể thêm animation loading nếu muốn, nhưng nó sẽ reset khi tải lại trang
+
+            setTimeout(() => {
+                loginMessageDiv.innerHTML = loginVulnerable(usernameInput, passwordInput);
+                loginText.style.display = 'block';
+                loginLoading.style.display = 'none';
+                loginBtn.disabled = false;
+            }, 500); // Mô phỏng độ trễ của server
+        });
+
+        document.getElementById('loginSecureBtn').addEventListener('click', function(e) {
+            e.preventDefault(); // Ngăn chặn form submit thật
+            const usernameInput = document.getElementById('username').value;
+            const passwordInput = document.getElementById('password').value;
+            const loginMessageDiv = document.getElementById('loginMessage');
+
+            // Hiển thị loading
+            const loginBtn = this;
+            const loginText = loginBtn.querySelector('.btn-text');
+            const loginLoading = loginBtn.querySelector('.loading');
+            
+            loginText.style.display = 'none';
+            loginLoading.style.display = 'block';
+            loginBtn.disabled = true;
+
+            setTimeout(() => {
+                loginMessageDiv.innerHTML = loginSecure(usernameInput, passwordInput);
+                loginText.style.display = 'block';
+                loginLoading.style.display = 'none';
+                loginBtn.disabled = false;
+            }, 500); // Mô phỏng độ trễ của server
         });
 
         document.getElementById('signupBtn').addEventListener('click', function() {
-            // Đây chỉ là nút ví dụ, không có chức năng đăng ký thực tế
             alert('Chức năng đăng ký chưa được triển khai trong bản demo này.');
         });
 
-        // Three.js implementation
+        // --- THREE.JS BACKGROUND VÀ FALLBACK LOGIC ---
         let scene, camera, renderer;
         let companyLogo, geometricShapes = [];
         let canvasContainer = document.getElementById('canvas-container');

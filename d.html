@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Security - Cổng Truy Cập Mật</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif; /* Sử dụng Inter font */
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            overflow: hidden;
+            height: 100vh;
+            color: #e2e8f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* Canvas Container for Three.js */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Main Content Container (Login/Dashboard) */
+        .main-content-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Glassmorphism Form/Panel */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                inset 0 0 30px rgba(148, 163, 184, 0.05);
+            
+            padding: 30px 48px; 
+            width: 100%;
+            max-width: 800px;
+            max-height: 60vh;
+            min-height: 400px;
+            
+            overflow: hidden; /* No scrollbar */
+            text-align: center;
+            transform-style: preserve-3d;
+            animation: float 10s ease-in-out infinite;
+            position: relative;
+            
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #3b82f6, #60a5fa, #3b82f6);
+            border-radius: 26px;
+            z-index: -1;
+            animation: glow-pulse 6s ease-in-out infinite alternate;
+            filter: blur(15px);
+            opacity: 0.2;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotateX(0deg) rotateY(0deg); }
+            33% { transform: translateY(-15px) rotateX(2deg) rotateY(2deg); }
+            66% { transform: translateY(10px) rotateX(-1deg) rotateY(-1deg); }
+        }
+
+        @keyframes glow-pulse {
+            0% { opacity: 0.15; }
+            100% { opacity: 0.3; }
+        }
+
+        /* Form Header */
+        .form-header {
+            margin-bottom: 25px;
+            flex-shrink: 0;
+        }
+
+        .form-header h1 {
+            color: #fff;
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #e0f2fe, #bae6fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-header p {
+            color: #94a3b8;
+            font-size: 1rem;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+
+        /* Form Content */
+        .auth-form-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .input-group {
+            margin-bottom: 18px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 7px;
+            color: #cbd5e1;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            background: rgba(30, 41, 59, 0.5);
+            color: #f1f5f9;
+            font-size: 0.9rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.1),
+                0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.6);
+            box-shadow: 
+                0 0 0 3px rgba(59, 130, 246, 0.2),
+                inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            background: rgba(30, 41, 59, 0.7);
+            transform: translateY(-1px);
+        }
+
+        .input-group input::placeholder {
+            color: #64748b;
+        }
+
+        /* Buttons */
+        .form-actions {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 16px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-login-secure {
+            background: linear-gradient(45deg, #22c55e, #34d399); /* Màu xanh lá cây cho bảo mật */
+            color: white;
+        }
+        .btn-login-secure:hover {
+            background-color: #16a34a;
+            box-shadow: 
+                0 10px 15px -3px rgba(34, 197, 94, 0.3),
+                0 4px 6px -2px rgba(34, 197, 94, 0.1);
+        }
+
+        .btn-signup {
+            background: rgba(30, 41, 59, 0.5);
+            color: #cbd5e1;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-signup:hover {
+            background: rgba(30, 41, 59, 0.7);
+            border-color: rgba(148, 163, 184, 0.4);
+        }
+
+        .forgot-password {
+            color: #93c5fd;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .forgot-password:hover {
+            color: #3b82f6;
+            text-decoration: underline;
+        }
+
+        /* Login Message */
+        #loginMessage {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: rgba(0,0,0,0.3);
+            font-size: 0.9rem;
+            min-height: 40px; /* Đảm bảo có không gian cho thông báo */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #loginMessage .error { color: #ef4444; }
+        #loginMessage .success { color: #22c55e; }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: #64748b;
+            flex-shrink: 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .divider span {
+            padding: 0 12px;
+            font-size: 0.8rem;
+        }
+
+        /* Social Login */
+        .social-login {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .social-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(30, 41, 59, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .social-btn svg {
+            width: 18px; 
+            height: 18px; 
+            vertical-align: middle; 
+        }
+
+        .social-btn:hover {
+            transform: translateY(-2px);
+            background: rgba(56, 189, 248, 0.1);
+            border-color: rgba(56, 189, 248, 0.3);
+        }
+
+        /* Loading Spinner */
+        .loading {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Fallback UI for WebGL */
+        .fallback-ui {
+            display: none; /* Mặc định ẩn */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #1e293b;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 400px;
+            margin: 20px;
+            position: relative;
+            z-index: 10;
+            color: #e2e8f0;
+        }
+
+        .fallback-ui h2 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .fallback-ui p {
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .fallback-ui .fallback-btn {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #3b82f6, #60a5fa);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .fallback-ui .fallback-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Secure Dashboard Styles */
+        #secureDashboard {
+            display: none; /* Ẩn mặc định */
+            padding: 30px 48px;
+            width: 100%;
+            max-width: 900px; /* Rộng hơn một chút cho dashboard */
+            max-height: 80vh; /* Cao hơn một chút cho dashboard */
+            min-height: 500px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid rgba(34, 197, 94, 0.2); /* Viền xanh lá cây */
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.4),
+                inset 0 0 40px rgba(34, 197, 94, 0.1); /* Bóng xanh lá cây */
+            
+            animation: float 10s ease-in-out infinite, secure-glow 3s ease-in-out infinite alternate;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            text-align: left; /* Căn trái cho nội dung terminal */
+            color: #34d399; /* Màu chữ xanh neon */
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace; /* Font terminal */
+            font-size: 0.9rem;
+            line-height: 1.5;
+            overflow-y: auto; /* Cho phép cuộn nếu nội dung quá dài */
+        }
+
+        #secureDashboard h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #a7f3d0; /* Màu sáng hơn cho tiêu đề */
+            margin-bottom: 20px;
+            text-shadow: 0 0 8px rgba(167, 243, 208, 0.7);
+        }
+
+        #secureDashboard .terminal-output {
+            flex-grow: 1;
+            background-color: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(34, 197, 94, 0.1);
+            overflow-y: auto; /* Cuộn riêng cho output */
+            white-space: pre-wrap; /* Giữ định dạng dòng */
+            word-wrap: break-word; /* Ngắt từ */
+            max-height: 300px; /* Giới hạn chiều cao */
+            color: #34d399;
+            text-shadow: 0 0 5px rgba(52, 211, 153, 0.5);
+        }
+
+        #secureDashboard .terminal-output::before {
+            content: 'user@nexus-core:~# ';
+            color: #93c5fd;
+        }
+        
+        #secureDashboard .logout-btn {
+            background: linear-gradient(45deg, #ef4444, #f87171);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+            align-self: flex-end; /* Căn phải nút logout */
+        }
+        #secureDashboard .logout-btn:hover {
+            background-color: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3);
+        }
+
+        /* LLM Feature Styles */
+        .llm-feature-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .llm-feature-section label {
+            display: block;
+            margin-bottom: 5px;
+            color: #a7f3d0;
+            font-weight: 600;
+            font-size: 1rem;
+            text-align: left;
+        }
+
+        .llm-feature-section textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            background-color: rgba(0, 0, 0, 0.3);
+            color: #e0f2fe;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            min-height: 100px;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+        .llm-feature-section textarea:focus {
+            outline: none;
+            border-color: #34d399;
+            box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.2);
+        }
+
+        .llm-feature-section button {
+            background: linear-gradient(45deg, #60a5fa, #3b82f6);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            align-self: flex-start; /* Căn trái nút */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .llm-feature-section button:hover {
+            background-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+        }
+
+        .llm-output {
+            background-color: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            color: #e0f2fe;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        .llm-output strong {
+            color: #a7f3d0;
+        }
+
+
+        @keyframes secure-glow {
+            0% { border-color: rgba(34, 197, 94, 0.2); box-shadow: 0 0 10px rgba(34, 197, 94, 0.1); }
+            100% { border-color: rgba(34, 197, 94, 0.5); box-shadow: 0 0 20px rgba(34, 197, 94, 0.4); }
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 1024px) {
+            .glass-panel, #secureDashboard {
+                max-width: 700px;
+                padding: 25px 35px;
+            }
+            .form-header h1 { font-size: 2rem; }
+            #secureDashboard h2 { font-size: 1.8rem; }
+        }
+
+        @media (max-width: 768px) {
+            .glass-panel, #secureDashboard {
+                padding: 20px 25px;
+                max-width: 90%;
+                max-height: 90vh;
+                min-height: unset;
+                overflow: hidden; 
+            }
+            .form-header h1 { font-size: 1.6rem; margin-bottom: 8px; }
+            .form-header p { font-size: 0.9rem; }
+            .input-group label { font-size: 0.85rem; margin-bottom: 5px; }
+            .input-group input { padding: 10px 14px; font-size: 0.85rem; }
+            .form-actions { flex-direction: column; gap: 10px; margin-bottom: 15px; }
+            .btn { width: 100%; padding: 10px; font-size: 0.85rem; }
+            .forgot-password { font-size: 0.8rem; margin-bottom: 15px; }
+            .divider { margin: 15px 0; }
+            .social-btn { width: 35px; height: 35px; }
+            .social-btn svg { width: 16px; height: 16px; }
+            #secureDashboard h2 { font-size: 1.5rem; }
+            #secureDashboard .terminal-output { font-size: 0.8rem; padding: 10px; }
+            #secureDashboard .logout-btn { padding: 8px 15px; font-size: 0.9rem; }
+            .llm-feature-section textarea { min-height: 80px; }
+            .llm-feature-section button { font-size: 0.9rem; padding: 8px 15px; }
+            .llm-output { font-size: 0.8rem; padding: 10px; max-height: 150px; }
+        }
+
+        @media (max-width: 480px) {
+            .glass-panel, #secureDashboard {
+                padding: 15px 20px;
+            }
+            .form-header h1 { font-size: 1.4rem; }
+            .form-header p { font-size: 0.85rem; }
+            .input-group { margin-bottom: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div class="main-content-container">
+        <!-- Login Form -->
+        <div class="glass-panel" id="loginPanel">
+            <div class="form-header">
+                <h1>Nexus Security</h1>
+                <p>Cổng truy cập hệ thống bảo mật cấp cao</p>
+            </div>
+            
+            <form id="authForm" class="auth-form-content">
+                <div class="input-group">
+                    <label for="username">Tên người dùng</label>
+                    <input type="text" id="username" name="username" placeholder="Nhập tên người dùng" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="password">Mật khẩu</label>
+                    <input type="password" id="password" name="password" placeholder="Nhập mật khẩu" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-login-secure" id="loginSecureBtn">
+                        <span class="btn-text">Đăng nhập</span>
+                        <div class="loading" id="loginLoading"></div>
+                    </button>
+                    <button type="button" class="btn btn-signup" id="signupBtn">
+                        <span class="btn-text">Đăng ký</span>
+                        <div class="loading" id="signupLoading"></div>
+                    </button>
+                </div>
+                
+                <a href="#" class="forgot-password">Quên mật khẩu?</a>
+            </form>
+            
+            <div id="loginMessage" style="margin-top: 20px; padding: 10px; border-radius: 8px; background-color: rgba(0,0,0,0.3); font-size: 0.9rem;">
+                <!-- Thông báo đăng nhập sẽ hiển thị ở đây -->
+            </div>
+
+            <div class="divider">
+                <span>hoặc tiếp tục với</span>
+            </div>
+            
+            <div class="social-login">
+                <div class="social-btn" title="Google">
+                    <!-- Google SVG Icon -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                    </svg>
+                </div>
+                <div class="social-btn" title="Facebook">
+                    <!-- Facebook SVG Icon -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 0C5.373 0 0 5.373 0 12c0 6.016 4.388 11.011 10.125 11.854V15.422H7.078V12h3.047V9.356c0-3.007 1.792-4.669 4.533-4.669 1.303 0 2.686.236 2.686.236v2.953H15.83c-1.491 0-1.956.925-1.956 1.874V12h3.328l-.532 3.422h-2.796v6.432C19.612 23.011 24 18.016 24 12c0-6.627-5.373-12-12-12z" fill="#1877F2"/>
+                    </svg>
+                </div>
+                <div class="social-btn" title="GitHub">
+                    <!-- GitHub SVG Icon -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" fill="#fff"/>
+                    </svg>
+                </div>
+                <div class="social-btn" title="Microsoft">
+                    <!-- Microsoft SVG Icon -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" fill="#00A4EF"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Secure Dashboard -->
+        <div class="glass-panel" id="secureDashboard" style="display: none;">
+            <h2>Secure Command Console</h2>
+            <div class="terminal-output" id="terminalOutput">
+                <span style="color: #a7f3d0;">Kết nối bảo mật được thiết lập...</span><br>
+                <span style="color: #a7f3d0;">Đang xác thực thông tin đăng nhập...</span><br>
+                <span style="color: #a7f3d0;">Truy cập được cấp. Chào mừng, <span id="loggedInUsername"></span>!</span><br>
+                <br>
+                <span style="color: #34d399;">Đang tải dữ liệu hệ thống...</span><br>
+                <br>
+                <span style="color: #fcd34d;">[CẢNH BÁO] Phát hiện 3 cuộc tấn công từ chối dịch vụ trong 24 giờ qua.</span><br>
+                <span style="color: #fcd34d;">[THÔNG BÁO] Cập nhật giao thức mã hóa v2.1 đã được triển khai.</span><br>
+                <span style="color: #34d399;">Đang giám sát luồng dữ liệu thời gian thực...</span><br>
+                <span style="color: #60a5fa;">Dữ liệu mã hóa: </span><span style="color: #e0f2fe;">0xAF3E2B9C7D1F...</span><br>
+                <span style="color: #60a5fa;">Trạng thái tường lửa: </span><span style="color: #e0f2fe;">Hoạt động</span><br>
+                <span style="color: #60a5fa;">Số lượng kết nối: </span><span style="color: #e0f2fe;">1289</span><br>
+                <span style="color: #60a5fa;">Tài nguyên CPU: </span><span style="color: #e0f2fe;">15%</span><br>
+                <span style="color: #60a5fa;">Tài nguyên RAM: </span><span style="color: #e0f2fe;">32%</span><br>
+                <span style="color: #60a5fa;">Bản vá bảo mật: </span><span style="color: #e0f2fe;">Mới nhất</span><br>
+                <span style="color: #34d399;">Đang chờ lệnh...</span>
+            </div>
+
+            <!-- LLM Feature Section -->
+            <div class="llm-feature-section">
+                <label for="logInput">Phân tích Nhật ký Bảo mật ✨</label>
+                <textarea id="logInput" placeholder="Nhập một đoạn nhật ký hệ thống hoặc thông báo cảnh báo để phân tích..."></textarea>
+                <button id="analyzeLogBtn">
+                    Phân tích Nhật ký
+                    <div class="loading" id="analyzeLoading" style="display: none;"></div>
+                </button>
+                <div class="llm-output" id="llmOutput">
+                    <strong>Kết quả phân tích:</strong><br>
+                    <span style="color: #64748b;">Kết quả từ AI sẽ hiển thị ở đây.</span>
+                </div>
+            </div>
+
+            <button class="logout-btn" id="logoutBtn">Đăng xuất</button>
+        </div>
+
+        <!-- Fallback UI for WebGL -->
+        <div class="fallback-ui" id="fallbackUI">
+            <h2>WebGL Not Supported</h2>
+            <p>Trình duyệt của bạn không hỗ trợ WebGL. Vui lòng sử dụng trình duyệt hiện đại như Chrome, Firefox hoặc Edge để có trải nghiệm tốt nhất.</p>
+            <button class="fallback-btn" onclick="location.reload()">Thử lại</button>
+        </div>
+    </div>
+
+    <script>
+        // --- MÔ PHỎNG CƠ SỞ DỮ LIỆU VÀ HASH MẬT KHẨU (CLIENT-SIDE) ---
+        // Sử dụng SHA-256 để mô phỏng băm mật khẩu
+        async function sha256(message) {
+            // Chuyển chuỗi thành mảng byte
+            const msgBuffer = new TextEncoder().encode(message);
+            // Băm thông điệp
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            // Chuyển mảng byte thành mảng số nguyên không dấu 8-bit
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            // Chuyển số thành chuỗi hex
+            const hexHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hexHash;
+        }
+
+        // "Cơ sở dữ liệu" người dùng giả lập với mật khẩu đã được băm trước
+        // Trong ứng dụng thực tế, mật khẩu sẽ được băm trên server và không bao giờ là plaintext
+        const simulatedSecureUsers = [
+            // Lưu ý: Các mật khẩu này đã được băm SHA-256
+            // "admin_pass" -> 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+            // "secure_pass" -> 4637b2d2426615b3648161580b06497554f67d4f933f78950587d19113645938
+            { username: 'admin', hashedPassword: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918' },
+            { username: 'sysadmin', hashedPassword: '4637b2d2426615b3648161580b06497554f67d4f933f78950587d19113645938' }
+        ];
+
+        // --- HÀM XỬ LÝ ĐĂNG NHẬP AN TOÀN ---
+        async function handleLogin(username, password) {
+            const loginMessageDiv = document.getElementById('loginMessage');
+            loginMessageDiv.innerHTML = ""; // Clear old message
+
+            // Simulate server delay
+            await new Promise(resolve => setTimeout(resolve, 1000)); 
+
+            try {
+                // Hash the user-provided password
+                const hashedInputPassword = await sha256(password);
+
+                // Find user in "database"
+                const foundUser = simulatedSecureUsers.find(user => 
+                    user.username === username && user.hashedPassword === hashedInputPassword
+                );
+
+                if (foundUser) {
+                    loginMessageDiv.innerHTML = `<span class='success'>Đăng nhập thành công! Đang truy cập hệ thống bảo mật...</span>`;
+                    // Transition to secure dashboard
+                    setTimeout(() => {
+                        document.getElementById('loginPanel').style.display = 'none';
+                        document.getElementById('secureDashboard').style.display = 'flex';
+                        document.getElementById('loggedInUsername').textContent = foundUser.username;
+                    }, 1500);
+                } else {
+                    loginMessageDiv.innerHTML = "<span class='error'>Tên người dùng hoặc mật khẩu không đúng.</span>";
+                }
+            } catch (error) {
+                console.error("Lỗi khi băm mật khẩu:", error);
+                loginMessageDiv.innerHTML = "<span class='error'>Đã xảy ra lỗi trong quá trình đăng nhập.</span>";
+            }
+        }
+
+        // --- XỬ LÝ SỰ KIỆN FORM ĐĂNG NHẬP ---
+        document.getElementById('loginSecureBtn').addEventListener('click', async function(e) {
+            e.preventDefault();
+            const usernameInput = document.getElementById('username').value;
+            const passwordInput = document.getElementById('password').value;
+            
+            // Show loading
+            const loginBtn = this;
+            const loginText = loginBtn.querySelector('.btn-text');
+            const loginLoading = loginBtn.querySelector('.loading');
+            
+            loginText.style.display = 'none';
+            loginLoading.style.display = 'block';
+            loginBtn.disabled = true;
+
+            await handleLogin(usernameInput, passwordInput);
+
+            loginText.style.display = 'block';
+            loginLoading.style.display = 'none';
+            loginBtn.disabled = false;
+        });
+
+        // --- XỬ LÝ NÚT ĐĂNG KÝ ---
+        document.getElementById('signupBtn').addEventListener('click', function() {
+            alert('Chức năng đăng ký chưa được triển khai trong bản demo này.');
+        });
+
+        // --- XỬ LÝ NÚT ĐĂNG XUẤT ---
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            document.getElementById('secureDashboard').style.display = 'none';
+            document.getElementById('loginPanel').style.display = 'flex';
+            document.getElementById('username').value = ''; // Clear username field
+            document.getElementById('password').value = ''; // Clear password field
+            document.getElementById('loginMessage').innerHTML = ''; // Clear message
+        });
+
+        // --- TÍNH NĂNG LLM: PHÂN TÍCH NHẬT KÝ BẢO MẬT ---
+        document.getElementById('analyzeLogBtn').addEventListener('click', async function() {
+            const logInput = document.getElementById('logInput').value;
+            const llmOutputDiv = document.getElementById('llmOutput');
+            const analyzeBtn = this;
+            const analyzeLoading = document.getElementById('analyzeLoading');
+
+            if (!logInput.trim()) {
+                llmOutputDiv.innerHTML = '<strong>Kết quả phân tích:</strong><br><span style="color: #ef4444;">Vui lòng nhập nhật ký để phân tích.</span>';
+                return;
+            }
+
+            llmOutputDiv.innerHTML = '<strong>Kết quả phân tích:</strong><br><span style="color: #60a5fa;">Đang phân tích nhật ký...</span>';
+            analyzeBtn.disabled = true;
+            analyzeLoading.style.display = 'block';
+
+            try {
+                const prompt = `Phân tích đoạn nhật ký bảo mật hoặc thông báo hệ thống sau đây. Giải thích ý nghĩa của nó và đề xuất các hành động cần thiết. Nếu không phải là nhật ký bảo mật, hãy nói rõ.
+                
+                Nhật ký: "${logInput}"
+                
+                Phân tích:`;
+
+                let chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+
+                const payload = { contents: chatHistory };
+                const apiKey = ""; // The Canvas environment will provide this API key
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    llmOutputDiv.innerHTML = `<strong>Kết quả phân tích:</strong><br>${text}`;
+                } else {
+                    llmOutputDiv.innerHTML = '<strong>Kết quả phân tích:</strong><br><span style="color: #ef4444;">Không thể nhận được phản hồi từ AI. Vui lòng thử lại.</span>';
+                    console.error("Unexpected API response structure:", result);
+                }
+            } catch (error) {
+                llmOutputDiv.innerHTML = '<strong>Kết quả phân tích:</strong><br><span style="color: #ef4444;">Lỗi khi gọi API Gemini: ' + error.message + '</span>';
+                console.error("Error calling Gemini API:", error);
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeLoading.style.display = 'none';
+            }
+        });
+
+
+        // --- THREE.JS BACKGROUND VÀ FALLBACK LOGIC ---
+        let scene, camera, renderer, controls;
+        let core, particles, lines;
+        let canvasContainer = document.getElementById('canvas-container');
+        let loginPanel = document.getElementById('loginPanel');
+        let fallbackUI = document.getElementById('fallbackUI');
+
+        function initThreeJS() {
+            try {
+                if (!window.WebGLRenderingContext) {
+                    throw new Error("WebGL is not supported.");
+                }
+
+                // Scene
+                scene = new THREE.Scene();
+                scene.fog = new THREE.FogExp2(0x0f172a, 0.002);
+
+                // Camera
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.set(0, 0, 100);
+
+                // Renderer
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                canvasContainer.appendChild(renderer.domElement);
+
+                // Controls
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true; // For a smoother motion
+                controls.dampingFactor = 0.05;
+                controls.screenSpacePanning = false;
+                controls.minDistance = 50;
+                controls.maxDistance = 200;
+                controls.maxPolarAngle = Math.PI / 2; // Limit vertical rotation
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x4a5568, 0.4);
+                scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0x60a5fa, 1);
+                directionalLight.position.set(10, 20, 15);
+                scene.add(directionalLight);
+
+                // Central Core
+                const coreGeometry = new THREE.IcosahedronGeometry(15, 1);
+                const coreMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x3b82f6,
+                    transparent: true,
+                    opacity: 0.8,
+                    wireframe: true,
+                    blending: THREE.AdditiveBlending // For glowing effect
+                });
+                core = new THREE.Mesh(coreGeometry, coreMaterial);
+                scene.add(core);
+
+                // Particles (Stars/Data bits)
+                const particleCount = 2000;
+                const particleGeometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const color = new THREE.Color();
+
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 500;
+                    positions[i * 3 + 1] = (Math.random() - 0.5) * 500;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 500;
+
+                    const hue = Math.random() * 0.1 + 0.5; // Blue to green hue
+                    const saturation = 0.8;
+                    const lightness = 0.7;
+                    color.setHSL(hue, saturation, lightness);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+                particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const particleMaterial = new THREE.PointsMaterial({
+                    size: 2,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.7,
+                    blending: THREE.AdditiveBlending
+                });
+                particles = new THREE.Points(particleGeometry, particleMaterial);
+                scene.add(particles);
+
+                // Connecting Lines (Network Grid)
+                const lineCount = 500;
+                const linePositions = new Float32Array(lineCount * 6); // 2 points * 3 coords
+                const lineColors = new Float32Array(lineCount * 6);
+                const tempColor = new THREE.Color();
+
+                for (let i = 0; i < lineCount; i++) {
+                    const startX = (Math.random() - 0.5) * 400;
+                    const startY = (Math.random() - 0.5) * 400;
+                    const startZ = (Math.random() - 0.5) * 400;
+                    const endX = startX + (Math.random() - 0.5) * 50;
+                    const endY = startY + (Math.random() - 0.5) * 50;
+                    const endZ = startZ + (Math.random() - 0.5) * 50;
+
+                    linePositions[i * 6] = startX;
+                    linePositions[i * 6 + 1] = startY;
+                    linePositions[i * 6 + 2] = startZ;
+                    linePositions[i * 6 + 3] = endX;
+                    linePositions[i * 6 + 4] = endY;
+                    linePositions[i * 6 + 5] = endZ;
+
+                    tempColor.setHSL(Math.random() * 0.2 + 0.6, 0.8, 0.6); // Blue/purple hue
+                    lineColors[i * 6] = tempColor.r;
+                    lineColors[i * 6 + 1] = tempColor.g;
+                    lineColors[i * 6 + 2] = tempColor.b;
+                    lineColors[i * 6 + 3] = tempColor.r;
+                    lineColors[i * 6 + 4] = tempColor.g;
+                    lineColors[i * 6 + 5] = tempColor.b;
+                }
+
+                const lineGeometry = new THREE.BufferGeometry();
+                lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+                lineGeometry.setAttribute('color', new THREE.BufferAttribute(lineColors, 3));
+
+                const lineMaterial = new THREE.LineBasicMaterial({
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.3,
+                    blending: THREE.AdditiveBlending
+                });
+                lines = new THREE.LineSegments(lineGeometry, lineMaterial);
+                scene.add(lines);
+
+                // Handle Window Resize
+                window.addEventListener('resize', () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                // Animation Loop
+                const clock = new THREE.Clock();
+                function animate() {
+                    requestAnimationFrame(animate);
+
+                    const delta = clock.getDelta();
+                    const time = clock.getElapsedTime();
+
+                    // Animate core
+                    if (core) {
+                        core.rotation.x += 0.001;
+                        core.rotation.y += 0.002;
+                        core.material.opacity = 0.7 + Math.sin(time * 2) * 0.1; // Pulsing effect
+                    }
+
+                    // Animate particles
+                    if (particles) {
+                        const positions = particles.geometry.attributes.position.array;
+                        for (let i = 0; i < particleCount; i++) {
+                            positions[i * 3 + 2] += 0.5 * delta * 60; // Move forward
+                            if (positions[i * 3 + 2] > 250) { // If past limit, reset to back
+                                positions[i * 3 + 2] = -250;
+                            }
+                        }
+                        particles.geometry.attributes.position.needsUpdate = true;
+                    }
+
+                    // Animate lines (subtle movement)
+                    if (lines) {
+                        lines.rotation.x += 0.0005;
+                        lines.rotation.y += 0.0008;
+                        lines.material.opacity = 0.2 + Math.sin(time * 1.5) * 0.1;
+                    }
+
+                    controls.update(); // Update OrbitControls
+                    renderer.render(scene, camera);
+                }
+
+                animate();
+                loginPanel.style.display = 'flex'; // Show login form
+                fallbackUI.style.display = 'none'; // Hide fallback
+            } catch (error) {
+                console.error('WebGL initialization failed:', error);
+                canvasContainer.style.display = 'none'; // Hide canvas
+                loginPanel.style.display = 'none'; /* Hide main form */
+                fallbackUI.style.display = 'flex'; /* Show fallback */
+            }
+        }
+
+        // Initialize everything when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            initThreeJS();
+        });
+
+        // Smooth scrolling for mobile (prevent pinch zoom)
+        document.addEventListener('touchmove', function(event) {
+            if (event.scale !== 1) { event.preventDefault(); }
+        }, { passive: false });
+
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    </script>
+</body>
+</html>

@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Labs - Future Tech Portal</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        /* CSS Reset và Typography */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a, #1e293b); /* Nền gradient tối */
+            overflow-x: hidden; /* Ngăn cuộn ngang */
+            min-height: 100vh; /* Đảm bảo chiều cao tối thiểu cho nội dung */
+            color: #e2e8f0; /* Màu chữ sáng mặc định */
+            display: flex;
+            flex-direction: column; /* Sắp xếp nội dung theo cột */
+            align-items: center; /* Căn giữa theo chiều ngang */
+            position: relative; /* Cho phép các phần tử con định vị tương đối */
+        }
+
+        /* Container cho Canvas Three.js */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1; /* Nền 3D nằm dưới các thành phần UI */
+        }
+
+        /* Thanh điều hướng */
+        .navbar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 50px;
+            position: fixed; /* Giữ navbar ở trên cùng khi cuộn */
+            top: 0;
+            left: 0;
+            z-index: 20; /* Nằm trên tất cả các thành phần khác */
+            background: rgba(15, 23, 42, 0.7); /* Nền mờ cho navbar */
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .navbar .brand-logo {
+            color: #fff;
+            font-size: 1.8rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: linear-gradient(to right, #bae6fd, #e0f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .navbar .nav-links a {
+            color: #bae6fd;
+            text-decoration: none;
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-left: 40px;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+
+        .navbar .nav-links a:hover {
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        /* Nội dung chính của trang home (hero section) */
+        .home-content {
+            position: relative;
+            z-index: 10; /* Đặt nội dung lên trên nền 3D */
+            text-align: center;
+            padding: 40px 50px;
+            max-width: 900px;
+            margin-top: 150px; /* Đẩy xuống để không bị che bởi navbar */
+            margin-bottom: 80px; /* Khoảng cách đến phần tiếp theo */
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                inset 0 0 30px rgba(148, 163, 184, 0.05);
+            animation: fadeIn 2s ease-out forwards;
+        }
+
+        .home-content h1 {
+            color: #fff;
+            font-size: 3.8rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: -1.5px;
+            background: linear-gradient(to right, #e0f2fe, #bae6fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .home-content p {
+            color: #94a3b8;
+            font-size: 1.3rem;
+            font-weight: 400;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+
+        .home-content .call-to-action {
+            display: inline-block;
+            padding: 18px 35px;
+            background: linear-gradient(45deg, #3b82f6, #60a5fa);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 6px 10px -2px rgba(0, 0, 0, 0.2);
+        }
+
+        .home-content .call-to-action:hover {
+            transform: translateY(-5px);
+            box-shadow: 
+                0 15px 25px -5px rgba(59, 130, 246, 0.4),
+                0 6px 10px -3px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Phần Dịch vụ */
+        .services-section {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 60px 50px;
+            max-width: 1000px;
+            width: 90%; /* Chiếm 90% chiều rộng màn hình */
+            margin-bottom: 80px;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                inset 0 0 30px rgba(148, 163, 184, 0.05);
+            animation: fadeIn 2s ease-out forwards;
+            animation-delay: 0.5s; /* Chờ một chút để hero section xuất hiện trước */
+            opacity: 0; /* Mặc định ẩn để dùng animation delay */
+            animation-fill-mode: forwards;
+        }
+
+        .services-section h2 {
+            color: #fff;
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 40px;
+            letter-spacing: -1px;
+            background: linear-gradient(to right, #e0f2fe, #bae6fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Tự động điều chỉnh cột */
+            gap: 30px;
+            justify-content: center;
+        }
+
+        .service-card {
+            background: rgba(30, 41, 59, 0.8); /* Nền tối hơn cho card */
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-align: left;
+        }
+
+        .service-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .service-card h3 {
+            color: #60a5fa;
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .service-card p {
+            color: #cbd5e1;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        /* Animation cho nội dung chính */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* UI dự phòng khi WebGL không được hỗ trợ */
+        .fallback-ui {
+            display: none; /* Mặc định ẩn */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #1e293b;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 400px;
+            margin: auto; /* Căn giữa tự động */
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            animation: fadeIn 2s ease-out forwards;
+        }
+
+        .fallback-ui h2 {
+            color: #ef4444;
+            margin-bottom: 15px;
+        }
+
+        .fallback-ui p {
+            color: #cbd5e1;
+            margin-bottom: 25px;
+        }
+
+        .fallback-ui .fallback-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .fallback-ui .fallback-btn:hover {
+            background: #2563eb;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1024px) {
+            .navbar {
+                padding: 15px 30px;
+            }
+            .navbar .brand-logo {
+                font-size: 1.6rem;
+            }
+            .navbar .nav-links a {
+                margin-left: 30px;
+                font-size: 1rem;
+            }
+            .home-content {
+                padding: 35px 45px;
+                margin-top: 120px;
+            }
+            .home-content h1 {
+                font-size: 3.2rem;
+            }
+            .home-content p {
+                font-size: 1.2rem;
+            }
+            .home-content .call-to-action {
+                padding: 15px 30px;
+                font-size: 1.1rem;
+            }
+            .services-section {
+                padding: 50px 40px;
+            }
+            .services-section h2 {
+                font-size: 2.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                padding: 15px 20px;
+            }
+            .navbar .brand-logo {
+                margin-bottom: 15px;
+            }
+            .navbar .nav-links a {
+                margin: 0 15px;
+            }
+            .home-content {
+                padding: 30px;
+                max-width: 90%;
+                margin-top: 100px; /* Đẩy xuống thêm một chút */
+            }
+            .home-content h1 {
+                font-size: 2.8rem;
+            }
+            .home-content p {
+                font-size: 1.1rem;
+            }
+            .home-content .call-to-action {
+                padding: 12px 25px;
+                font-size: 1rem;
+            }
+            .services-section {
+                padding: 40px 30px;
+                width: 95%;
+            }
+            .services-section h2 {
+                font-size: 2.2rem;
+            }
+            .services-grid {
+                grid-template-columns: 1fr; /* Một cột trên màn hình nhỏ */
+            }
+            .service-card {
+                padding: 25px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .navbar {
+                padding: 10px 15px;
+            }
+            .navbar .brand-logo {
+                font-size: 1.4rem;
+                margin-bottom: 10px;
+            }
+            .navbar .nav-links a {
+                font-size: 0.9rem;
+                margin: 0 10px;
+            }
+            .home-content {
+                padding: 20px;
+                margin-top: 80px;
+            }
+            .home-content h1 {
+                font-size: 2.2rem;
+                margin-bottom: 15px;
+            }
+            .home-content p {
+                font-size: 0.95rem;
+                margin-bottom: 30px;
+            }
+            .home-content .call-to-action {
+                padding: 10px 20px;
+                font-size: 0.95rem;
+            }
+            .services-section {
+                padding: 30px 20px;
+            }
+            .services-section h2 {
+                font-size: 1.8rem;
+                margin-bottom: 30px;
+            }
+            .service-card h3 {
+                font-size: 1.5rem;
+            }
+            .service-card p {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <header class="navbar">
+        <a href="#" class="brand-logo">Nexus Labs</a>
+        <nav class="nav-links">
+            <a href="#services-section">Dịch vụ</a>
+            <a href="login.html">Đăng nhập</a> </nav>
+    </header>
+
+    <div class="home-content" id="homeContent">
+        <h1>Chào mừng đến với Nexus Labs</h1>
+        <p>Khám phá tương lai của công nghệ và đổi mới. Hòa mình vào một thế giới nơi mọi khả năng đều vô hạn và ý tưởng trở thành hiện thực.</p>
+        <a href="#services-section" class="call-to-action">Khám phá Dịch vụ của chúng tôi</a>
+    </div>
+        
+    <section class="services-section" id="services-section">
+        <h2>Dịch vụ cốt lõi của chúng tôi</h2>
+        <div class="services-grid">
+            <div class="service-card">
+                <h3>Phát triển Phần mềm AI</h3>
+                <p>Chúng tôi chuyên phát triển các giải pháp phần mềm dựa trên Trí tuệ Nhân tạo, từ phân tích dữ liệu đến tự động hóa quy trình, giúp doanh nghiệp của bạn hoạt động thông minh hơn.</p>
+            </div>
+            <div class="service-card">
+                <h3>Tư vấn Công nghệ</h3>
+                <p>Cung cấp tư vấn chiến lược về công nghệ, giúp bạn định hình lộ trình số hóa, lựa chọn công nghệ phù hợp và tối ưu hóa hiệu quả hoạt động.</p>
+            </div>
+            <div class="service-card">
+                <h3>Giải pháp Blockchain</h3>
+                <p>Xây dựng các ứng dụng và hệ thống dựa trên Blockchain an toàn và minh bạch, phục vụ các ngành như tài chính, chuỗi cung ứng và quản lý dữ liệu.</p>
+            </div>
+            <div class="service-card">
+                <h3>Thiết kế Trải nghiệm Người dùng</h3>
+                <p>Tạo ra các giao diện người dùng trực quan, hấp dẫn và dễ sử dụng, đảm bảo trải nghiệm tốt nhất cho khách hàng của bạn trên mọi nền tảng.</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="fallback-ui" id="fallbackUI">
+        <h2>WebGL không được hỗ trợ</h2>
+        <p>Trình duyệt của bạn không hỗ trợ WebGL. Vui lòng sử dụng trình duyệt hiện đại như Chrome, Firefox hoặc Edge để có trải nghiệm tốt nhất.</p>
+        <button class="fallback-btn" onclick="location.reload()">Thử lại</button>
+    </div>
+
+    <script>
+        // Triển khai Three.js cho nền động
+        let scene, camera, renderer;
+        let companyLogo, geometricShapes = [];
+
+        function initThreeJS() {
+            try {
+                // Kiểm tra hỗ trợ WebGL
+                if (!window.WebGLRenderingContext) {
+                    throw new Error('WebGL not supported');
+                }
+
+                // Cài đặt Scene
+                scene = new THREE.Scene();
+                scene.fog = new THREE.FogExp2(0x0f172a, 0.002); // Sương mù để tạo chiều sâu
+
+                // Cài đặt Camera
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+                camera.position.set(0, 0, 50);
+
+                // Cài đặt Renderer
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // Alpha true để nền CSS hiển thị
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Điều chỉnh pixel ratio cho độ nét
+                renderer.shadowMap.enabled = true; // Bật đổ bóng
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Loại đổ bóng mềm
+                document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+                // Ánh sáng
+                const ambientLight = new THREE.AmbientLight(0x4a5568, 0.4); // Ánh sáng môi trường
+                scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0x60a5fa, 1); // Ánh sáng định hướng
+                directionalLight.position.set(10, 20, 15);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                scene.add(directionalLight);
+
+                const hemisphereLight = new THREE.HemisphereLight(0x60a5fa, 0x1e293b, 0.3); // Ánh sáng bán cầu
+                scene.add(hemisphereLight);
+
+                // Tạo logo công ty (thiết kế hình học đơn giản)
+                const logoGroup = new THREE.Group();
+                
+                // Hình lục giác chính
+                const hexagonGeometry = new THREE.CylinderGeometry(8, 8, 1, 6); // bán kính trên, dưới, chiều cao, số mặt
+                const hexagonMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x3b82f6, // Màu xanh
+                    emissive: 0x1e40af, // Màu phát sáng nhẹ
+                    shininess: 80, // Độ bóng
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const hexagon = new THREE.Mesh(hexagonGeometry, hexagonMaterial);
+                hexagon.rotation.x = Math.PI / 2; // Xoay để mặt phẳng nằm ngang
+                logoGroup.add(hexagon);
+
+                // Hình tròn bên trong
+                const circleGeometry = new THREE.SphereGeometry(4, 32, 32); // bán kính, số phân đoạn
+                const circleMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x60a5fa, // Màu xanh nhạt
+                    emissive: 0x1d4ed8,
+                    shininess: 60,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const circle = new THREE.Mesh(circleGeometry, circleMaterial);
+                logoGroup.add(circle);
+
+                // Vòng ngoài
+                const ringGeometry = new THREE.TorusGeometry(6, 0.5, 16, 64); // bán kính, độ dày, phân đoạn radial, phân đoạn tubular
+                const ringMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x93c5fd, // Màu xanh rất nhạt
+                    emissive: 0x1e40af,
+                    shininess: 40,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                ring.rotation.x = Math.PI / 2;
+                logoGroup.add(ring);
+
+                logoGroup.position.set(0, 0, -30); /* Đẩy lùi logo về phía sau để tạo chiều sâu */
+                scene.add(logoGroup);
+                companyLogo = logoGroup;
+
+                // Tạo các hình khối hình học cho môi trường
+                const shapes = [
+                    { type: 'box', size: [4, 4, 4], color: 0x3b82f6, position: [20, 5, -50] },
+                    { type: 'sphere', size: [3], color: 0x60a5fa, position: [-15, 8, -55] },
+                    { type: 'cylinder', size: [2, 2, 6], color: 0x93c5fd, position: [10, -5, -65] },
+                    { type: 'torus', size: [5, 1], color: 0xbae6fd, position: [-20, -3, -70] },
+                    { type: 'box', size: [3, 6, 3], color: 0x3b82f6, position: [25, -8, -60] },
+                    { type: 'sphere', size: [2.5], color: 0x60a5fa, position: [-10, 12, -75] }
+                ];
+
+                shapes.forEach(shapeData => {
+                    let geometry, material, mesh;
+                    
+                    switch(shapeData.type) {
+                        case 'box':
+                            geometry = new THREE.BoxGeometry(...shapeData.size);
+                            break;
+                        case 'sphere':
+                            geometry = new THREE.SphereGeometry(shapeData.size[0], 32, 32);
+                            break;
+                        case 'cylinder':
+                            geometry = new THREE.CylinderGeometry(shapeData.size[0], shapeData.size[1], shapeData.size[2], 32);
+                            break;
+                        case 'torus':
+                            geometry = new THREE.TorusGeometry(shapeData.size[0], shapeData.size[1], 16, 64);
+                            break;
+                    }
+                    
+                    material = new THREE.MeshPhongMaterial({
+                        color: shapeData.color,
+                        emissive: new THREE.Color(shapeData.color).multiplyScalar(0.2), // Phát sáng nhẹ
+                        shininess: 30,
+                        transparent: true,
+                        opacity: 0.4
+                    });
+                    
+                    mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(...shapeData.position);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    scene.add(mesh);
+                    geometricShapes.push({
+                        mesh: mesh,
+                        originalY: shapeData.position[1],
+                        speed: 0.5 + Math.random() * 0.5 // Tốc độ di chuyển ngẫu nhiên
+                    });
+                });
+
+                // Tạo hệ thống hạt
+                const particleCount = 1000;
+                const particleGeometry = new THREE.BufferGeometry();
+                const particlePositions = new Float32Array(particleCount * 3);
+                const particleSizes = new Float32Array(particleCount);
+
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    particlePositions[i3] = (Math.random() - 0.5) * 200; // X
+                    particlePositions[i3 + 1] = (Math.random() - 0.5) * 200; // Y
+                    particlePositions[i3 + 2] = (Math.random() - 0.5) * 200 - 50; // Z
+                    particleSizes[i] = Math.random() * 2 + 0.5; // Kích thước hạt
+                }
+
+                particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+                particleGeometry.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+
+                const particleMaterial = new THREE.PointsMaterial({
+                    color: 0xbae6fd, // Màu hạt
+                    size: 1.5,
+                    transparent: true,
+                    opacity: 0.6,
+                    sizeAttenuation: true // Kích thước hạt thay đổi theo khoảng cách
+                });
+
+                const particles = new THREE.Points(particleGeometry, particleMaterial);
+                scene.add(particles);
+
+                // Biến để theo dõi vị trí chuột
+                let mouseX = 0;
+                let mouseY = 0;
+                const windowHalfX = window.innerWidth / 2;
+                const windowHalfY = window.innerHeight / 2;
+
+                // Sự kiện di chuyển chuột
+                document.addEventListener('mousemove', (event) => {
+                    mouseX = (event.clientX - windowHalfX) / 100;
+                    mouseY = (event.clientY - windowHalfY) / 100;
+                });
+
+                // Sự kiện chạm trên thiết bị di động
+                document.addEventListener('touchmove', (event) => {
+                    if (event.touches.length > 0) {
+                        mouseX = (event.touches[0].clientX - windowHalfX) / 100;
+                        mouseY = (event.touches[0].clientY - windowHalfY) / 100;
+                    }
+                });
+
+                // Xử lý thay đổi kích thước cửa sổ
+                window.addEventListener('resize', () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                // Vòng lặp Animation
+                const clock = new THREE.Clock(); // Đồng hồ để tính thời gian
+                let autoRotation = 0;
+
+                function animate() {
+                    requestAnimationFrame(animate); // Yêu cầu frame tiếp theo
+
+                    const delta = clock.getDelta(); // Thời gian từ frame trước
+                    const time = clock.getElapsedTime(); // Tổng thời gian đã trôi qua
+
+                    // Tự động xoay nhẹ nhàng
+                    autoRotation += 0.0005;
+                    
+                    // Hiệu ứng Parallax theo chuột
+                    const targetX = mouseX * 0.01;
+                    const targetY = mouseY * 0.01;
+                    
+                    // Điều chỉnh vị trí camera để tạo hiệu ứng parallax mượt mà hơn
+                    camera.position.x += (Math.sin(autoRotation) * 2 + targetX - camera.position.x) * 0.05;
+                    camera.position.y += (Math.cos(autoRotation * 0.7) * 1 + -targetY - camera.position.y) * 0.05;
+                    camera.position.z = 50 + Math.sin(time * 0.3) * 2; /* Camera hơi dao động về phía trước/sau */
+                    camera.lookAt(0, 0, 0); // Camera luôn nhìn vào tâm scene
+
+                    // Animate logo 
+                    if (companyLogo) {
+                        companyLogo.rotation.y += 0.005; // Xoay quanh trục Y
+                        companyLogo.rotation.x = Math.sin(time * 0.5) * 0.1; // Lắc nhẹ quanh trục X
+                        companyLogo.position.y = 0 + Math.sin(time * 0.8) * 0.5; // Di chuyển lên xuống
+                        
+                        // Hiệu ứng "pulsing" nhẹ
+                        const scale = 1 + Math.sin(time * 2) * 0.02;
+                        companyLogo.scale.set(scale, scale, scale);
+                    }
+
+                    // Animate các hình khối hình học
+                    geometricShapes.forEach((shape, index) => {
+                        shape.mesh.rotation.x += 0.003 + index * 0.0005;
+                        shape.mesh.rotation.y += 0.004 + index * 0.0005;
+                        shape.mesh.position.y = shape.originalY + Math.sin(time * shape.speed + index) * 1.5; // Di chuyển lên xuống
+                        shape.mesh.material.emissiveIntensity = 0.1 + Math.sin(time * 1.5 + index) * 0.1; // Hiệu ứng phát sáng nhẹ
+                    });
+
+                    // Animate hạt
+                    const positions = particles.geometry.attributes.position.array;
+                    for (let i = 0; i < particleCount; i++) {
+                        const i3 = i * 3;
+                        positions[i3 + 2] += 0.1; // Di chuyển hạt về phía camera
+                        if (positions[i3 + 2] > 50) { // Nếu hạt vượt qua camera, đưa về phía sau
+                            positions[i3 + 2] = -100;
+                        }
+                    }
+                    particles.geometry.attributes.position.needsUpdate = true; // Cập nhật vị trí hạt
+
+                    renderer.render(scene, camera); // Render scene
+                }
+
+                animate(); // Bắt đầu vòng lặp animation
+
+            } catch (error) {
+                console.error('WebGL initialization failed:', error);
+                // Ẩn canvas và nội dung chính, hiển thị UI dự phòng
+                document.getElementById('canvas-container').style.display = 'none';
+                document.getElementById('homeContent').style.display = 'none';
+                document.getElementById('services-section').style.display = 'none'; // Ẩn cả phần dịch vụ
+                document.getElementById('fallbackUI').style.display = 'flex'; // Sử dụng flex để căn giữa UI dự phòng
+                document.querySelector('.navbar').style.display = 'none'; // Ẩn luôn navbar
+            }
+        }
+
+        // Khởi tạo Three.js khi DOM đã sẵn sàng
+        document.addEventListener('DOMContentLoaded', initThreeJS);
+    </script>
+</body>
+</html>
